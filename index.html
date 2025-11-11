@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор баннеров для LED-бортов</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            color: #333;
+            font-size: 24px;
+        }
+
+        h2 {
+            margin-top: 20px;
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 18px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 8px;
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        input[type="number"],
+        input[type="text"],
+        input[type="color"],
+        input[type="file"],
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        input[type="color"] {
+            height: 40px;
+            cursor: pointer;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: normal;
+        }
+
+        .radio-group input[type="radio"] {
+            width: auto;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        button.secondary {
+            background: #6c757d;
+        }
+
+        button.secondary:hover {
+            background: #545b62;
+        }
+
+        button.danger {
+            background: #dc3545;
+        }
+
+        button.danger:hover {
+            background: #c82333;
+        }
+
+        button.success {
+            background: #28a745;
+        }
+
+        button.success:hover {
+            background: #218838;
+        }
+
+        .text-block {
+            background: #f8f9fa;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .text-block-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .text-block-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .preview-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+        }
+
+        .preview-wrapper {
+            display: inline-block;
+            min-width: 100%;
+        }
+
+        #preview {
+            border: 2px solid #ddd;
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .info {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #004085;
+        }
+
+        .divisors {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 8px;
+        }
+
+        .divisor-btn {
+            padding: 5px 10px;
+            background: #e9ecef;
+            border: 1px solid #ced4da;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .divisor-btn:hover {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        .divisor-btn.active {
+            background: #007bff;
+            color: white;
+            border-color: #007bff;
+        }
+
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="panel">
+            <h1>Настройки баннера</h1>
+
+            <h2>Размеры борта</h2>
+
+            <div class="form-group">
+                <label>Общая длина LED-борта (px)</label>
+                <input type="number" id="totalLength" value="10000" min="100">
+            </div>
+
+            <div class="form-group">
+                <label>Высота борта (px)</label>
+                <input type="number" id="boardHeight" value="1000" min="100">
+            </div>
+
+            <div class="form-group">
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="sectionMode" value="auto" checked>
+                        Авто
+                    </label>
+                    <label>
+                        <input type="radio" name="sectionMode" value="manual">
+                        Вручную
+                    </label>
+                </div>
+            </div>
+
+            <div class="form-group" id="divisorsContainer">
+                <label>Выберите длину секции (делители)</label>
+                <div class="divisors" id="divisorsList"></div>
+            </div>
+
+            <div class="form-group" id="manualSectionContainer" style="display: none;">
+                <label>Длина секции (px)</label>
+                <input type="number" id="sectionLength" value="1000" min="100">
+            </div>
+
+            <div class="info" id="sectionInfo"></div>
+
+            <h2>Фон</h2>
+
+            <div class="form-group">
+                <label>Цвет фона</label>
+                <input type="color" id="bgColor" value="#1a1a1a">
+            </div>
+
+            <h2>Текстовые блоки</h2>
+
+            <div id="textBlocks"></div>
+
+            <button onclick="addTextBlock()">+ Добавить текстовый блок</button>
+
+            <div class="button-group">
+                <button class="success" onclick="downloadSVG()">Скачать SVG</button>
+                <button class="secondary" onclick="updatePreview()">Обновить превью</button>
+            </div>
+        </div>
+
+        <div class="preview-container">
+            <h1>Превью</h1>
+            <div class="preview-wrapper">
+                <svg id="preview" width="1000" height="200"></svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let textBlocks = [];
+        let customFonts = {};
+
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function () {
+            initEventListeners();
+            addTextBlock();
+            updateDivisors();
+            updatePreview();
+        });
+
+        function initEventListeners() {
+            document.getElementById('totalLength').addEventListener('input', updateDivisors);
+            document.getElementById('boardHeight').addEventListener('input', updatePreview);
+            document.getElementById('bgColor').addEventListener('input', updatePreview);
+
+            document.querySelectorAll('input[name="sectionMode"]').forEach(radio => {
+                radio.addEventListener('change', function () {
+                    if (this.value === 'manual') {
+                        document.getElementById('divisorsContainer').style.display = 'none';
+                        document.getElementById('manualSectionContainer').style.display = 'block';
+                    } else {
+                        document.getElementById('divisorsContainer').style.display = 'block';
+                        document.getElementById('manualSectionContainer').style.display = 'none';
+                    }
+                    updatePreview();
+                });
+            });
+
+            document.getElementById('sectionLength').addEventListener('input', updatePreview);
+        }
+
+        function findDivisors(num) {
+            const divisors = [];
+            for (let i = 1; i <= Math.sqrt(num); i++) {
+                if (num % i === 0) {
+                    divisors.push(i);
+                    if (i !== num / i) {
+                        divisors.push(num / i);
+                    }
+                }
+            }
+            return divisors.sort((a, b) => a - b);
+        }
+
+        function updateDivisors() {
+            const totalLength = parseInt(document.getElementById('totalLength').value);
+            const divisors = findDivisors(totalLength);
+            const divisorsList = document.getElementById('divisorsList');
+
+            // Фильтруем делители (берем разумные значения)
+            const filteredDivisors = divisors.filter(d => d >= 100 && d <= totalLength);
+
+            divisorsList.innerHTML = '';
+            filteredDivisors.forEach((divisor, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'divisor-btn';
+                btn.textContent = divisor;
+                btn.onclick = function () {
+                    document.querySelectorAll('.divisor-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    document.getElementById('sectionLength').value = divisor;
+                    updatePreview();
+                };
+
+                // Автоматически выбираем средний делитель
+                if (index === Math.floor(filteredDivisors.length / 2)) {
+                    btn.classList.add('active');
+                    document.getElementById('sectionLength').value = divisor;
+                }
+
+                divisorsList.appendChild(btn);
+            });
+
+            updateSectionInfo();
+            updatePreview();
+        }
+
+        function updateSectionInfo() {
+            const totalLength = parseInt(document.getElementById('totalLength').value);
+            const sectionLength = parseInt(document.getElementById('sectionLength').value);
+            const sectionsCount = Math.floor(totalLength / sectionLength);
+
+            document.getElementById('sectionInfo').textContent =
+                `Секций: ${sectionsCount} × ${sectionLength}px = ${sectionsCount * sectionLength}px`;
+        }
+
+        function addTextBlock() {
+            const id = Date.now();
+            const block = {
+                id: id,
+                text: 'ТЕКСТ',
+                fontSize: 100,
+                color: '#ffffff',
+                fontFamily: 'Arial',
+                customFont: null,
+                verticalOffset: 0
+            };
+
+            textBlocks.push(block);
+            renderTextBlocks();
+            updatePreview();
+        }
+
+        function removeTextBlock(id) {
+            textBlocks = textBlocks.filter(block => block.id !== id);
+            renderTextBlocks();
+            updatePreview();
+        }
+
+        function updateTextBlock(id, field, value) {
+            const block = textBlocks.find(b => b.id === id);
+            if (block) {
+                block[field] = value;
+                updatePreview();
+            }
+        }
+
+        function handleFontUpload(id, file) {
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const fontName = 'CustomFont' + id;
+                    const fontFace = new FontFace(fontName, `url(${e.target.result})`);
+
+                    fontFace.load().then(function (loadedFont) {
+                        document.fonts.add(loadedFont);
+                        customFonts[id] = fontName;
+                        updateTextBlock(id, 'fontFamily', fontName);
+                        updateTextBlock(id, 'customFont', file.name);
+                    }).catch(function (error) {
+                        console.error('Ошибка загрузки шрифта:', error);
+                        alert('Не удалось загрузить шрифт');
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function renderTextBlocks() {
+            const container = document.getElementById('textBlocks');
+            container.innerHTML = '';
+
+            textBlocks.forEach((block, index) => {
+                const div = document.createElement('div');
+                div.className = 'text-block';
+                div.innerHTML = `
+                    <div class="text-block-header">
+                        <span class="text-block-title">Блок ${index + 1}</span>
+                        <button class="danger" onclick="removeTextBlock(${block.id})">Удалить</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Текст</label>
+                        <input type="text" value="${block.text}" 
+                               oninput="updateTextBlock(${block.id}, 'text', this.value)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Размер шрифта (px)</label>
+                        <input type="number" value="${block.fontSize}" min="10"
+                               oninput="updateTextBlock(${block.id}, 'fontSize', parseInt(this.value))">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Цвет</label>
+                        <input type="color" value="${block.color}"
+                               oninput="updateTextBlock(${block.id}, 'color', this.value)">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Загрузить шрифт (TTF, OTF, WOFF)</label>
+                        <input type="file" accept=".ttf,.otf,.woff,.woff2"
+                               onchange="handleFontUpload(${block.id}, this.files[0])">
+                        ${block.customFont ? `<small style="color: #28a745;">✓ ${block.customFont}</small>` : ''}
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Смещение по вертикали (px)</label>
+                        <input type="number" value="${block.verticalOffset}"
+                               oninput="updateTextBlock(${block.id}, 'verticalOffset', parseInt(this.value))">
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function measureTextWidth(text, fontSize, fontFamily) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = `${fontSize}px ${fontFamily}`;
+            return context.measureText(text).width;
+        }
+
+        function updatePreview() {
+            updateSectionInfo();
+
+            const sectionLength = parseInt(document.getElementById('sectionLength').value);
+            const height = parseInt(document.getElementById('boardHeight').value);
+            const bgColor = document.getElementById('bgColor').value;
+
+            if (textBlocks.length === 0) {
+                renderSVG(sectionLength, height, bgColor, []);
+                return;
+            }
+
+            // Измеряем ширину всех текстовых блоков
+            const blockWidths = textBlocks.map(block =>
+                measureTextWidth(block.text, block.fontSize, block.fontFamily)
+            );
+
+            const totalTextWidth = blockWidths.reduce((sum, width) => sum + width, 0);
+            const availableSpace = sectionLength - totalTextWidth;
+            const gaps = textBlocks.length + 1;
+            const gapWidth = availableSpace / gaps;
+
+            // Рассчитываем позиции текстовых блоков
+            let currentX = gapWidth;
+            const positionedBlocks = textBlocks.map((block, index) => {
+                const x = currentX;
+                currentX += blockWidths[index] + gapWidth;
+                return { ...block, x, width: blockWidths[index] };
+            });
+
+            renderSVG(sectionLength, height, bgColor, positionedBlocks);
+        }
+
+        function renderSVG(width, height, bgColor, blocks) {
+            const svg = document.getElementById('preview');
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+
+            let svgContent = `<rect width="${width}" height="${height}" fill="${bgColor}"/>`;
+
+            // Добавляем определения шрифтов
+            let defs = '<defs>';
+            Object.entries(customFonts).forEach(([id, fontName]) => {
+                const block = blocks.find(b => b.id == id);
+                if (block) {
+                    // Font-face будет добавлен через CSS в итоговом SVG
+                }
+            });
+            defs += '</defs>';
+
+            blocks.forEach(block => {
+                const y = (height / 2) + (block.fontSize / 3) + block.verticalOffset;
+                svgContent += `
+                    <text 
+                        x="${block.x}" 
+                        y="${y}" 
+                        font-family="${block.fontFamily}" 
+                        font-size="${block.fontSize}" 
+                        fill="${block.color}"
+                        text-anchor="start"
+                        dominant-baseline="middle"
+                    >${escapeXml(block.text)}</text>
+                `;
+            });
+
+            svg.innerHTML = defs + svgContent;
+        }
+
+        function escapeXml(text) {
+            return text
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&apos;');
+        }
+
+        function downloadSVG() {
+            const sectionLength = parseInt(document.getElementById('sectionLength').value);
+            const height = parseInt(document.getElementById('boardHeight').value);
+            const bgColor = document.getElementById('bgColor').value;
+
+            // Пересчитываем для актуальных данных
+            const blockWidths = textBlocks.map(block =>
+                measureTextWidth(block.text, block.fontSize, block.fontFamily)
+            );
+
+            const totalTextWidth = blockWidths.reduce((sum, width) => sum + width, 0);
+            const availableSpace = sectionLength - totalTextWidth;
+            const gaps = textBlocks.length + 1;
+            const gapWidth = availableSpace / gaps;
+
+            let currentX = gapWidth;
+            const positionedBlocks = textBlocks.map((block, index) => {
+                const x = currentX;
+                currentX += blockWidths[index] + gapWidth;
+                return { ...block, x, width: blockWidths[index] };
+            });
+
+            // Создаем SVG с встроенными шрифтами
+            let svgContent = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${sectionLength}" height="${height}" viewBox="0 0 ${sectionLength} ${height}" 
+     xmlns="http://www.w3.org/2000/svg">
+    <rect width="${sectionLength}" height="${height}" fill="${bgColor}"/>
+`;
+
+            positionedBlocks.forEach(block => {
+                const y = (height / 2) + (block.fontSize / 3) + block.verticalOffset;
+                svgContent += `    <text x="${block.x}" y="${y}" font-family="${block.fontFamily}" font-size="${block.fontSize}" fill="${block.color}" text-anchor="start" dominant-baseline="middle">${escapeXml(block.text)}</text>\n`;
+            });
+
+            svgContent += '</svg>';
+
+            const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `led-banner-${sectionLength}x${height}.svg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+
+</html>
