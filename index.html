@@ -79,6 +79,17 @@
             margin-bottom: 20px;
         }
 
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .form-row .form-group {
+            margin-bottom: 0;
+        }
+
         label {
             display: block;
             margin-bottom: 8px;
@@ -101,7 +112,8 @@
         }
 
         input[type="number"]:focus,
-        input[type="text"]:focus {
+        input[type="text"]:focus,
+        select:focus {
             outline: none;
             border-color: #007bff;
         }
@@ -109,6 +121,11 @@
         input[type="color"] {
             height: 45px;
             cursor: pointer;
+        }
+
+        select {
+            cursor: pointer;
+            background: white;
         }
 
         .radio-group {
@@ -327,6 +344,10 @@
             .button-group button {
                 width: 100%;
             }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -356,7 +377,7 @@
 
                     <div class="form-group">
                         <label>Общая длина LED-борта (px)</label>
-                        <input type="number" id="totalLength" value="12000" min="100" step="100">
+                        <input type="number" id="totalLength" value="24960" min="100" step="100">
                     </div>
 
                     <div class="form-group">
@@ -384,7 +405,7 @@
 
                     <div class="form-group" id="manualSectionContainer" style="display: none;">
                         <label>Длина секции (px)</label>
-                        <input type="number" id="sectionLength" value="1000" min="100" step="100">
+                        <input type="number" id="sectionLength" value="2496" min="100" step="100">
                     </div>
 
                     <div class="info" id="sectionInfo"></div>
@@ -416,41 +437,66 @@
         let textBlocks = [];
         let customFonts = {};
         let loadedFonts = {};
-        let defaultFont = null;
-        let defaultFontName = 'Giorgio Sans LCG Heavy Italic';
-        let fontLoaded = false;
-
-        // Загрузка дефолтного шрифта
-        async function loadDefaultFont() {
-            try {
-                const response = await fetch('./fonts/Giorgio Sans LCG Heavy Italic.otf');
-                if (!response.ok) {
-                    throw new Error('Файл шрифта не найден');
-                }
-                const buffer = await response.arrayBuffer();
-                defaultFont = opentype.parse(buffer);
-
-                // Добавляем шрифт в документ для отображения
-                const blob = new Blob([buffer], { type: 'font/otf' });
-                const url = URL.createObjectURL(blob);
-                const fontFace = new FontFace(defaultFontName, `url(${url})`);
-                const loadedFontFace = await fontFace.load();
-                document.fonts.add(loadedFontFace);
-
-                fontLoaded = true;
-                console.log('✅ Дефолтный шрифт Giorgio Sans загружен');
-            } catch (error) {
-                console.error('❌ Не удалось загрузить дефолтный шрифт:', error);
-                defaultFontName = 'Arial, sans-serif';
-                fontLoaded = false;
+        let defaultFonts = {
+            'giorgio': {
+                name: 'Giorgio Sans LCG Heavy Italic',
+                path: './fonts/Giorgio Sans LCG Heavy Italic.otf',
+                font: null
+            },
+            'gilroy': {
+                name: 'Gilroy Black',
+                path: './fonts/Gilroy-Black.otf',
+                font: null
             }
+        };
+        let fontsLoaded = false;
+
+        // Загрузка дефолтных шрифтов
+        async function loadDefaultFonts() {
+            try {
+                // Загружаем Giorgio Sans
+                const giorgioResponse = await fetch(defaultFonts.giorgio.path);
+                if (giorgioResponse.ok) {
+                    const giorgioBuffer = await giorgioResponse.arrayBuffer();
+                    defaultFonts.giorgio.font = opentype.parse(giorgioBuffer);
+
+                    const giorgioBlob = new Blob([giorgioBuffer], { type: 'font/otf' });
+                    const giorgioUrl = URL.createObjectURL(giorgioBlob);
+                    const giorgioFace = new FontFace(defaultFonts.giorgio.name, `url(${giorgioUrl})`);
+                    const loadedGiorgio = await giorgioFace.load();
+                    document.fonts.add(loadedGiorgio);
+                    console.log('✅ Giorgio Sans загружен');
+                }
+            } catch (error) {
+                console.error('❌ Не удалось загрузить Giorgio Sans:', error);
+            }
+
+            try {
+                // Загружаем Gilroy
+                const gilroyResponse = await fetch(defaultFonts.gilroy.path);
+                if (gilroyResponse.ok) {
+                    const gilroyBuffer = await gilroyResponse.arrayBuffer();
+                    defaultFonts.gilroy.font = opentype.parse(gilroyBuffer);
+
+                    const gilroyBlob = new Blob([gilroyBuffer], { type: 'font/otf' });
+                    const gilroyUrl = URL.createObjectURL(gilroyBlob);
+                    const gilroyFace = new FontFace(defaultFonts.gilroy.name, `url(${gilroyUrl})`);
+                    const loadedGilroy = await gilroyFace.load();
+                    document.fonts.add(loadedGilroy);
+                    console.log('✅ Gilroy Black загружен');
+                }
+            } catch (error) {
+                console.error('❌ Не удалось загрузить Gilroy Black:', error);
+            }
+
+            fontsLoaded = true;
         }
 
         // Инициализация
         document.addEventListener('DOMContentLoaded', async function () {
-            await loadDefaultFont();
+            await loadDefaultFonts();
             initEventListeners();
-            addTextBlock();
+            initDefaultBlocks();
             updateDivisors();
             updatePreview();
         });
@@ -476,6 +522,46 @@
             document.getElementById('sectionLength').addEventListener('input', updatePreview);
         }
 
+        function initDefaultBlocks() {
+            // Блок 1: BetBoom
+            const block1Id = Date.now();
+            const block1 = {
+                id: block1Id,
+                text: 'BetBoom',
+                fontSize: 136,
+                color: '#ffffff',
+                fontFamily: defaultFonts.gilroy.name,
+                fontKey: 'gilroy',
+                customFont: null,
+                fontFile: null,
+                verticalOffset: 1
+            };
+            if (defaultFonts.gilroy.font) {
+                loadedFonts[block1Id] = defaultFonts.gilroy.font;
+            }
+            textBlocks.push(block1);
+
+            // Блок 2: ФРИБЕТ ДО 10 000
+            const block2Id = Date.now() + 1;
+            const block2 = {
+                id: block2Id,
+                text: 'ФРИБЕТ ДО 10 000',
+                fontSize: 138,
+                color: '#ffffff',
+                fontFamily: defaultFonts.giorgio.name,
+                fontKey: 'giorgio',
+                customFont: null,
+                fontFile: null,
+                verticalOffset: 5
+            };
+            if (defaultFonts.giorgio.font) {
+                loadedFonts[block2Id] = defaultFonts.giorgio.font;
+            }
+            textBlocks.push(block2);
+
+            renderTextBlocks();
+        }
+
         function findDivisors(num) {
             const divisors = [];
             for (let i = 1; i <= Math.sqrt(num); i++) {
@@ -493,25 +579,27 @@
             const totalLength = parseInt(document.getElementById('totalLength').value);
             const divisors = findDivisors(totalLength);
             const divisorsList = document.getElementById('divisorsList');
+            const currentSectionLength = parseInt(document.getElementById('sectionLength').value);
 
             const filteredDivisors = divisors.filter(d => d >= 100 && d <= totalLength);
 
             divisorsList.innerHTML = '';
-            filteredDivisors.forEach((divisor, index) => {
+            filteredDivisors.forEach((divisor) => {
                 const btn = document.createElement('button');
                 btn.className = 'divisor-btn';
                 btn.textContent = divisor;
+
+                // Активируем кнопку если это текущая длина секции
+                if (divisor === currentSectionLength) {
+                    btn.classList.add('active');
+                }
+
                 btn.onclick = function () {
                     document.querySelectorAll('.divisor-btn').forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                     document.getElementById('sectionLength').value = divisor;
                     updatePreview();
                 };
-
-                if (index === Math.floor(filteredDivisors.length / 2)) {
-                    btn.classList.add('active');
-                    document.getElementById('sectionLength').value = divisor;
-                }
 
                 divisorsList.appendChild(btn);
             });
@@ -536,15 +624,16 @@
                 text: 'ТЕКСТ',
                 fontSize: 60,
                 color: '#ffffff',
-                fontFamily: defaultFontName,
-                customFont: fontLoaded ? 'Giorgio Sans LCG Heavy Italic.otf' : null,
+                fontFamily: defaultFonts.giorgio.name,
+                fontKey: 'giorgio',
+                customFont: null,
                 fontFile: null,
                 verticalOffset: 0
             };
 
-            // Если загружен дефолтный шрифт, сохраняем его
-            if (fontLoaded && defaultFont) {
-                loadedFonts[id] = defaultFont;
+            // Сохраняем дефолтный шрифт
+            if (defaultFonts.giorgio.font) {
+                loadedFonts[id] = defaultFonts.giorgio.font;
             }
 
             textBlocks.push(block);
@@ -588,6 +677,30 @@
             }
         }
 
+        function handleFontChange(id, fontKey) {
+            const block = textBlocks.find(b => b.id === id);
+            if (!block) return;
+
+            if (fontKey === 'custom') {
+                // Открываем диалог выбора файла
+                const fileInput = document.getElementById(`fontFile_${id}`);
+                if (fileInput) {
+                    fileInput.click();
+                }
+            } else {
+                // Используем дефолтный шрифт
+                const font = defaultFonts[fontKey];
+                if (font && font.font) {
+                    block.fontFamily = font.name;
+                    block.fontKey = fontKey;
+                    block.customFont = null;
+                    loadedFonts[id] = font.font;
+                    renderTextBlocks();
+                    updatePreview();
+                }
+            }
+        }
+
         function handleFontUpload(id, file) {
             if (file) {
                 const reader = new FileReader();
@@ -605,8 +718,10 @@
                             document.fonts.add(loadedFont);
                             customFonts[id] = fontName;
                             updateTextBlock(id, 'fontFamily', fontName);
+                            updateTextBlock(id, 'fontKey', 'custom');
                             updateTextBlock(id, 'customFont', file.name);
                             updateTextBlock(id, 'fontFile', file);
+                            renderTextBlocks();
                         }).catch(function (error) {
                             console.error('Ошибка загрузки шрифта:', error);
                             alert('Не удалось загрузить шрифт для отображения');
@@ -642,29 +757,37 @@
                                oninput="updateTextBlock(${block.id}, 'text', this.value)">
                     </div>
                     
-                    <div class="form-group">
-                        <label>Размер шрифта (px)</label>
-                        <input type="number" value="${block.fontSize}" min="10"
-                               oninput="updateTextBlock(${block.id}, 'fontSize', parseInt(this.value))">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Размер (px)</label>
+                            <input type="number" value="${block.fontSize}" min="10"
+                                   oninput="updateTextBlock(${block.id}, 'fontSize', parseInt(this.value))">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Цвет</label>
+                            <input type="color" value="${block.color}"
+                                   oninput="updateTextBlock(${block.id}, 'color', this.value)">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Смещение (px)</label>
+                            <input type="number" value="${block.verticalOffset}"
+                                   oninput="updateTextBlock(${block.id}, 'verticalOffset', parseInt(this.value))">
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <label>Цвет</label>
-                        <input type="color" value="${block.color}"
-                               oninput="updateTextBlock(${block.id}, 'color', this.value)">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Загрузить шрифт (TTF, OTF, WOFF)</label>
-                        <input type="file" accept=".ttf,.otf,.woff,.woff2"
+                        <label>Шрифт</label>
+                        <select onchange="handleFontChange(${block.id}, this.value)" id="fontSelect_${block.id}">
+                            <option value="giorgio" ${block.fontKey === 'giorgio' ? 'selected' : ''}>Giorgio Sans LCG Heavy Italic</option>
+                            <option value="gilroy" ${block.fontKey === 'gilroy' ? 'selected' : ''}>Gilroy Black</option>
+                            <option value="custom" ${block.fontKey === 'custom' ? 'selected' : ''}>Загрузить свой шрифт...</option>
+                        </select>
+                        <input type="file" id="fontFile_${block.id}" accept=".ttf,.otf,.woff,.woff2" 
+                               style="display: none;"
                                onchange="handleFontUpload(${block.id}, this.files[0])">
                         ${block.customFont ? `<small style="color: #28a745;">✓ ${block.customFont}</small>` : ''}
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Смещение по вертикали от центра (px)</label>
-                        <input type="number" value="${block.verticalOffset}"
-                               oninput="updateTextBlock(${block.id}, 'verticalOffset', parseInt(this.value))">
                     </div>
                 `;
                 container.appendChild(div);
@@ -718,20 +841,28 @@
 
             let svgContent = `<rect width="${width}" height="${height}" fill="${bgColor}"/>`;
 
+            // В превью используем path вместо text для консистентности
             blocks.forEach(block => {
-                // ВАЖНО: одинаковая формула для Y в превью и экспорте
                 const y = (height / 2) + block.verticalOffset;
-                svgContent += `
-                    <text 
-                        x="${block.x}" 
-                        y="${y}" 
-                        font-family="${block.fontFamily}" 
-                        font-size="${block.fontSize}" 
-                        fill="${block.color}"
-                        text-anchor="start"
-                        dominant-baseline="central"
-                    >${escapeXml(block.text)}</text>
-                `;
+                const font = loadedFonts[block.id];
+
+                if (font) {
+                    const pathData = textToPath(font, block.text, block.fontSize, block.x, y);
+                    svgContent += `<path d="${pathData}" fill="${block.color}"/>`;
+                } else {
+                    // Fallback для системных шрифтов
+                    svgContent += `
+                        <text 
+                            x="${block.x}" 
+                            y="${y}" 
+                            font-family="${block.fontFamily}" 
+                            font-size="${block.fontSize}" 
+                            fill="${block.color}"
+                            text-anchor="start"
+                            dominant-baseline="central"
+                        >${escapeXml(block.text)}</text>
+                    `;
+                }
             });
 
             svg.innerHTML = svgContent;
@@ -747,22 +878,18 @@
         }
 
         function textToPath(font, text, fontSize, x, y) {
-            // y уже содержит: (height / 2) + verticalOffset
-            // Теперь конвертируем в baseline для opentype
+            // Создаем path с baseline в точке 0,0
+            let path = font.getPath(text, 0, 0, fontSize);
+            const bbox = path.getBoundingBox();
 
-            const scale = fontSize / font.unitsPerEm;
+            // Находим визуальный центр path (середина между верхом и низом)
+            const pathVisualCenter = (bbox.y1 + bbox.y2) / 2;
 
-            // Используем capHeight - высота заглавных букв
-            const capHeight = (font.tables.os2 && font.tables.os2.sCapHeight)
-                ? font.tables.os2.sCapHeight * scale
-                : font.ascender * scale * 0.7;
+            // Смещаем path так, чтобы его визуальный центр был на y
+            const adjustedY = y - pathVisualCenter;
 
-            // dominant-baseline="central" центрирует по cap-height
-            // y указывает где должен быть центр cap-height
-            // baseline для opentype находится внизу, поэтому смещаем вниз на половину cap-height
-            const baselineY = y + (capHeight / 2);
-
-            const path = font.getPath(text, x, baselineY, fontSize);
+            // Создаем финальный path с правильным смещением
+            path = font.getPath(text, x, adjustedY, fontSize);
             return path.toPathData(2);
         }
 
@@ -794,7 +921,6 @@
 `;
 
             for (const block of positionedBlocks) {
-                // ВАЖНО: точно такая же формула для Y как в превью
                 const y = (height / 2) + block.verticalOffset;
                 const font = loadedFonts[block.id];
 
