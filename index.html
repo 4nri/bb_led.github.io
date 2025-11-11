@@ -45,8 +45,6 @@
 
         .preview-wrapper {
             overflow-x: auto;
-            border: 2px solid #ddd;
-            border-radius: 4px;
             background: #f8f9fa;
         }
 
@@ -168,6 +166,17 @@
             background: #c82333;
         }
 
+        button.duplicate {
+            background: #ffc107;
+            padding: 8px 16px;
+            font-size: 13px;
+            color: #000;
+        }
+
+        button.duplicate:hover {
+            background: #e0a800;
+        }
+
         button.success {
             background: #28a745;
             padding: 14px 28px;
@@ -216,6 +225,11 @@
             font-size: 16px;
         }
 
+        .text-block-actions {
+            display: flex;
+            gap: 8px;
+        }
+
         .info {
             background: #e7f3ff;
             border-left: 4px solid #007bff;
@@ -235,13 +249,14 @@
 
         .divisor-btn {
             padding: 8px 16px;
-            background: white;
+            background: #e9ecef;
             border: 2px solid #dee2e6;
             border-radius: 6px;
             cursor: pointer;
             font-size: 13px;
             font-weight: 600;
             transition: all 0.2s;
+            color: #333;
         }
 
         .divisor-btn:hover {
@@ -401,9 +416,39 @@
         let textBlocks = [];
         let customFonts = {};
         let loadedFonts = {};
+        let defaultFont = null;
+        let defaultFontName = 'Giorgio Sans LCG Heavy Italic';
+        let fontLoaded = false;
+
+        // Загрузка дефолтного шрифта
+        async function loadDefaultFont() {
+            try {
+                const response = await fetch('./fonts/Giorgio Sans LCG Heavy Italic.otf');
+                if (!response.ok) {
+                    throw new Error('Файл шрифта не найден');
+                }
+                const buffer = await response.arrayBuffer();
+                defaultFont = opentype.parse(buffer);
+
+                // Добавляем шрифт в документ для отображения
+                const blob = new Blob([buffer], { type: 'font/otf' });
+                const url = URL.createObjectURL(blob);
+                const fontFace = new FontFace(defaultFontName, `url(${url})`);
+                const loadedFontFace = await fontFace.load();
+                document.fonts.add(loadedFontFace);
+
+                fontLoaded = true;
+                console.log('✅ Дефолтный шрифт Giorgio Sans загружен');
+            } catch (error) {
+                console.error('❌ Не удалось загрузить дефолтный шрифт:', error);
+                defaultFontName = 'Arial, sans-serif';
+                fontLoaded = false;
+            }
+        }
 
         // Инициализация
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', async function () {
+            await loadDefaultFont();
             initEventListeners();
             addTextBlock();
             updateDivisors();
@@ -491,13 +536,38 @@
                 text: 'ТЕКСТ',
                 fontSize: 60,
                 color: '#ffffff',
-                fontFamily: 'Arial, sans-serif',
-                customFont: null,
+                fontFamily: defaultFontName,
+                customFont: fontLoaded ? 'Giorgio Sans LCG Heavy Italic.otf' : null,
                 fontFile: null,
                 verticalOffset: 0
             };
 
+            // Если загружен дефолтный шрифт, сохраняем его
+            if (fontLoaded && defaultFont) {
+                loadedFonts[id] = defaultFont;
+            }
+
             textBlocks.push(block);
+            renderTextBlocks();
+            updatePreview();
+        }
+
+        function duplicateTextBlock(id) {
+            const originalBlock = textBlocks.find(b => b.id === id);
+            if (!originalBlock) return;
+
+            const newId = Date.now();
+            const duplicatedBlock = {
+                ...originalBlock,
+                id: newId
+            };
+
+            // Копируем загруженный шрифт
+            if (loadedFonts[id]) {
+                loadedFonts[newId] = loadedFonts[id];
+            }
+
+            textBlocks.push(duplicatedBlock);
             renderTextBlocks();
             updatePreview();
         }
@@ -527,7 +597,9 @@
                         loadedFonts[id] = font;
 
                         const fontName = 'CustomFont' + id;
-                        const fontFace = new FontFace(fontName, `url(${URL.createObjectURL(file)})`);
+                        const blob = new Blob([e.target.result], { type: 'font/otf' });
+                        const url = URL.createObjectURL(blob);
+                        const fontFace = new FontFace(fontName, `url(${url})`);
 
                         fontFace.load().then(function (loadedFont) {
                             document.fonts.add(loadedFont);
@@ -558,7 +630,10 @@
                 div.innerHTML = `
                     <div class="text-block-header">
                         <span class="text-block-title">Блок ${index + 1}</span>
-                        <button class="danger" onclick="removeTextBlock(${block.id})">Удалить</button>
+                        <div class="text-block-actions">
+                            <button class="duplicate" onclick="duplicateTextBlock(${block.id})">Дублировать</button>
+                            <button class="danger" onclick="removeTextBlock(${block.id})">Удалить</button>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -615,19 +690,27 @@
                 return;
             }
 
+            // Измеряем ширину всех текстовых блоков
             const blockWidths = textBlocks.map(block =>
                 measureTextWidth(block.text, block.fontSize, block.fontFamily)
             );
 
             const totalTextWidth = blockWidths.reduce((sum, width) => sum + width, 0);
-            const availableSpace = sectionLength - totalTextWidth;
-            const gaps = textBlocks.length + 1;
-            const gapWidth = availableSpace / gaps;
+            const n = textBlocks.length;
 
-            let currentX = gapWidth;
+            // ПРАВИЛЬНАЯ ФОРМУЛА для стыковки панелей:
+            // У нас n блоков текста, значит n промежутков между ними (включая стыки панелей)
+            // spacing = (sectionLength - totalTextWidth) / n
+            // Первый блок начинается на расстоянии spacing/2 от начала
+
+            const spacing = (sectionLength - totalTextWidth) / n;
+            const startOffset = spacing / 2;
+
+            // Располагаем блоки
+            let currentX = startOffset;
             const positionedBlocks = textBlocks.map((block, index) => {
                 const x = currentX;
-                currentX += blockWidths[index] + gapWidth;
+                currentX += blockWidths[index] + spacing;
                 return { ...block, x, width: blockWidths[index] };
             });
 
@@ -671,8 +754,22 @@
         }
 
         function textToPath(font, text, fontSize, x, y) {
+            // dominant-baseline="central" центрирует по cap-height (высоте заглавных букв)
+            // а не по фактическим boundaries с выносными элементами
+
             const scale = fontSize / font.unitsPerEm;
-            const path = font.getPath(text, x, y, fontSize);
+
+            // Используем capHeight - это высота заглавных букв
+            // Если capHeight нет в шрифте, используем ascender как приближение
+            const capHeight = (font.tables.os2 && font.tables.os2.sCapHeight)
+                ? font.tables.os2.sCapHeight * scale
+                : font.ascender * scale * 0.7; // приблизительное значение
+
+            // Центр cap-height должен быть на y
+            // baseline находится внизу, поэтому:
+            const baselineY = y + (capHeight / 2);
+
+            const path = font.getPath(text, x, baselineY, fontSize);
             return path.toPathData(2);
         }
 
@@ -686,14 +783,14 @@
             );
 
             const totalTextWidth = blockWidths.reduce((sum, width) => sum + width, 0);
-            const availableSpace = sectionLength - totalTextWidth;
-            const gaps = textBlocks.length + 1;
-            const gapWidth = availableSpace / gaps;
+            const n = textBlocks.length;
+            const spacing = (sectionLength - totalTextWidth) / n;
+            const startOffset = spacing / 2;
 
-            let currentX = gapWidth;
+            let currentX = startOffset;
             const positionedBlocks = textBlocks.map((block, index) => {
                 const x = currentX;
-                currentX += blockWidths[index] + gapWidth;
+                currentX += blockWidths[index] + spacing;
                 return { ...block, x, width: blockWidths[index] };
             });
 
@@ -712,7 +809,7 @@
                     const pathData = textToPath(font, block.text, block.fontSize, block.x, y);
                     svgContent += `    <path d="${pathData}" fill="${block.color}"/>\n`;
                 } else {
-                    // Используем стандартный шрифт как текст (для системных шрифтов)
+                    // Используем стандартный шрифт как текст
                     svgContent += `    <text x="${block.x}" y="${y}" font-family="${block.fontFamily}" font-size="${block.fontSize}" fill="${block.color}" text-anchor="start" dominant-baseline="central">${escapeXml(block.text)}</text>\n`;
                 }
             }
