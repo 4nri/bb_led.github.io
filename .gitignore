@@ -1,0 +1,21 @@
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE files
+.idea/
+.vscode/
+
+# Build artifacts
+target/
+build/
+node_modules/
+
+# Log files and temporary files
+*.log
+*.tmp
+temp/
+
+# Sensitive information (example)
+.env
+config.local.js
